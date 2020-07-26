@@ -1,6 +1,7 @@
 #include "chip8.h"
 #include <initializer_list>
 #include <cstring>
+#include <random>
 
 chip8::chip8() {
     // Set all registers to 0
@@ -138,17 +139,37 @@ bool chip8::exec_instruction(unsigned short instr) {
             PC += 2;
             break;
         default:
-            PC += 2; // Next instruction
+            PC += 2; 
             return false;
         }
         break;
     case 0x9000:
+        switch(instr & 0xF) {
+        case 0x0000:    // 9xy0 : Skip next instruction if V[x] != V[y]
+            if (V[(instr & 0x0F00) >> 8] != V[(instr & 0x00F0) >> 4])
+                PC += 4;
+            else
+                PC += 2;
+            break;
+        default:
+            PC += 2;
+            return false;
+        }
         break;
-    case 0xA000:
+    case 0xA000:        // Annn : Set I = nnn
+        I = instr & 0x0FFF;
+        PC += 2;
         break;
-    case 0xB000:
+    case 0xB000:        // Bnnn : Jump to location nnn + V[0]
+        PC = (instr & 0x0FFF) + V[0];
         break;
-    case 0xC000:
+    case 0xC000:        // Cxkk : Set V[x] = (random byte) & kk
+        std::random_device rd;
+        std::mt19937 generator(rd());
+        std::uniform_int_distribution<unsigned short> distribution(0, 255);
+        unsigned char rand_byte = (unsigned char)distribution(generator);
+        V[(instr & 0x0F00) >> 8] = rand_byte & (instr & 0xFF);
+        PC += 2;
         break;
     case 0xD000:
         break;
