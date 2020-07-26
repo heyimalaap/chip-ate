@@ -61,17 +61,31 @@ bool chip8::exec_instruction(unsigned short instr) {
         else
             PC += 2; // Next instruction
         break;
-    case 0x4000:   // 4xkk : Skip next instruction if V[X] != kk
+    case 0x4000:   // 4xkk : Skip next instruction if V[x] != kk
         if (V[(instr & 0x0F00) >> 8] != (instr & 0xFF))
             PC += 4; // Skip next instruction
         else
             PC += 2; // Next instruction
         break;
-    case 0x5000:
+    case 0x5000:   // 5xy0 : Skip next instruction if V[x] == V[y]
+        switch (instr & 0xF) {
+        case 0x0:   // 5xy0
+            if (V[(instr & 0x0F00) >> 8] == V[(instr & 0x00F0) >> 4])
+                PC += 4; // Skip next instruction
+            else
+                PC += 2; // Next instruction
+            break;
+        default:
+            PC += 2; // Next instruction
+            return false;
+        }
         break;
-    case 0x6000:
+    case 0x6000:    // 6xkk : Set V[x] = kk
+        V[(instr & 0x0F00) >> 8] = (instr & 0xFF);
+        PC += 2;
         break;
-    case 0x7000:
+    case 0x7000:    // 7xkk : Set V[x] = V[x] + kk
+        V[(instr & 0x0F00) >> 8] += (instr & 0xFF);
         break;
     case 0x8000:
         break;
