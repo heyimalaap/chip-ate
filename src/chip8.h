@@ -23,6 +23,7 @@ public:
     unsigned char display[display_width][display_hight];
     unsigned char keys[16];
     chip8();
+    bool exec_instruction(unsigned short instr);
 };
 
 #endif
