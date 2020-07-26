@@ -12,8 +12,8 @@ chip8::chip8() {
     // Set program counter to 0x200
     PC = 0x200;
 
-    // Set stack pointer to 0
-    SP = 0;
+    // Set stack pointer to -1 (empty stack)
+    SP = -1;
 
     // Load fonts
     int number = 0;
@@ -33,22 +33,39 @@ bool chip8::exec_instruction(unsigned short instr) {
         switch(instr & 0x00FF) {
         case 0xE0: // 00E0 : Clear the display
             memset(display, 0, sizeof(display));
+            PC += 2; // Next instruction
             break;
         case 0xEE: // 00EE : Return from subroutine
-            if (SP == 0) return false; // Stack empty fail
+            if (SP == -1) {
+                PC += 2; // Next instruction (Ignoring ret instr)
+                return false; // Stack empty fail
+            }
             PC = stack[SP--];
+            PC += 2; // Next instruction
             break;
         default:   // 0nnn : Insturction not suported
+            PC += 2; // Next instruction
             return false;
         }
         break;
-    case 0x1000:
+    case 0x1000:   // 1nnn : Jump to location nnn
+        PC = instr & 0x0FFF;
         break;
-    case 0x2000:
+    case 0x2000:   // 2nnn : Call subroutine at nnn
+        stack[++SP] = PC;
+        PC = instr & 0x0FFF;
         break;
-    case 0x3000:
+    case 0x3000:   // 3xkk : Skip next instruction if V[x] == kk
+        if (V[(instr & 0x0F00) >> 8] == (instr & 0xFF))
+            PC += 4; // Skip next instruction
+        else
+            PC += 2; // Next instruction
         break;
-    case 0x4000:
+    case 0x4000:   // 4xkk : Skip next instruction if V[X] != kk
+        if (V[(instr & 0x0F00) >> 8] != (instr & 0xFF))
+            PC += 4; // Skip next instruction
+        else
+            PC += 2; // Next instruction
         break;
     case 0x5000:
         break;
