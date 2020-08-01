@@ -211,36 +211,48 @@ bool chip8::exec_instruction(unsigned short instr) {
     } break;
     case 0xF000: {
         switch (instr & 0x00FF) {
-        case 0x0007: {
+        case 0x0007: {  // Fx07 : LD Vx, DT, Set V[x] = DT
             V[(instr & 0x0F00) >> 8] = DT;
             PC += 2;
         } break;
-        case 0x000A: {
-            for (short i = 1; i <= 16; i++)
-                if (keys[i-1] == 1) {
+        case 0x000A: {  // Fx0A : LD Vx, K, wait for key press and store in V[x]
+            for (short i = 0; i < 16; i++)
+                if (keys[i] == 1) {
                     V[(instr & 0x0F00) >> 8] = i;
+                    PC += 2;
                 }
         } break;
-        case 0x0015: {
-
+        case 0x0015: {  // Fx15 : LD DT, V[x], Set DT = V[x]
+            DT = V[(instr & 0x0F00) >> 8];
+            PC += 2;
         } break;
-        case 0x0018: {
-
+        case 0x0018: {  // Fx18 : LD ST, V[x], Set ST = V[x]
+            ST = V[(instr & 0x0F00) >> 8];
+            PC += 2;
         } break;
-        case 0x001E: {
-
+        case 0x001E: {  // Fx1E : ADD I, V[x], Set I = I + V[x]
+            I = I + V[(instr & 0x0F00) >> 8];
+            PC += 2;
         } break;
-        case 0x0029: {
-
+        case 0x0029: {  // Fx29 : LD F, V[x], Set I = location of font for V[x]
+            I = (short)(&font[(instr & 0x0F00) >> 8][0] - &Memory[0]);
+            PC += 2;
         } break;
-        case 0x0033: {
-
+        case 0x0033: {  // Fx33 : LD B, V[x], Set BCD of V[x] at I, I+1, I+2
+            Memory[I + 2] = V[(instr & 0x0F00) >> 8] % 10;
+            Memory[I + 1] = (V[(instr & 0x0F00) >> 8]/10) % 10;
+            Memory[I]     = (V[(instr & 0x0F00) >> 8]/100) % 10;
+            PC += 2;
         } break;
-        case 0x0055: {
-
+        case 0x0055: {  // Fx55 : LD [I], V[x], Store V[0] to V[x] at I
+            for (short i = 0; i <= ((instr & 0x0F00) >> 8); i++)
+                Memory[I + i] = V[i];
+            PC += 2;
         } break;
-        case 0x0065: {
-
+        case 0x0065: {  // Fx65 : LD V[x], [I], Read into V[0] to V[x] starting from I
+            for (short i = 0; i <= ((instr & 0x0F00) >> 8); i++)
+                V[i] = Memory[I + i];
+            PC += 2;
         } break;
         default: {
             PC += 2;
