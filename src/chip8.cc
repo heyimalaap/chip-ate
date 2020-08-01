@@ -174,11 +174,79 @@ bool chip8::exec_instruction(unsigned short instr) {
         V[(instr & 0x0F00) >> 8] = rand_byte & (instr & 0xFF);
         PC += 2;
     }   break;
-    case 0xD000: {
+    case 0xD000: {      // Dxyn : Draw sprite at (x, y)
+        unsigned short x = (instr & 0x0F00) >> 8;
+        unsigned short y = (instr & 0x00F0) >> 4;
+        unsigned short n = (instr & 0x000F);
+        V[0xF] = 0;
+        for (unsigned short addr = I; addr < I+n; addr++) {
+            unsigned char byte = Memory[addr];
+            for (unsigned short i = x+7; i >= x; i++) {
+                if (display[i % display_width][y % display_hight] == 1) V[0xF] = 1;
+                display[i % display_width][y % display_hight] ^= byte & 1;
+                byte == byte >> 1;
+            }
+            y++;
+        }
     } break;
     case 0xE000: {
+        switch (instr & 0x00FF) {
+        case 0x009E: {  // Ex9E : SKP Vx, skip next instr if key with value Vx is pressed
+            if (keys[V[(instr & 0x0F00) >> 8]] == 1)
+                PC += 4;
+            else
+                PC += 2;
+        } break;
+        case 0x00A1: {  // ExA1 : SKNP Vx, skip next instr if key with value Vx is not pressed
+            if (keys[V[(instr & 0x0F00) >> 8] == 0])
+                PC += 4;
+            else
+                PC += 2;
+        } break;
+        default: {
+            PC += 2;
+            return false;
+        }
+        }
     } break;
     case 0xF000: {
+        switch (instr & 0x00FF) {
+        case 0x0007: {
+            V[(instr & 0x0F00) >> 8] = DT;
+            PC += 2;
+        } break;
+        case 0x000A: {
+            for (short i = 1; i <= 16; i++)
+                if (keys[i-1] == 1) {
+                    V[(instr & 0x0F00) >> 8] = i;
+                }
+        } break;
+        case 0x0015: {
+
+        } break;
+        case 0x0018: {
+
+        } break;
+        case 0x001E: {
+
+        } break;
+        case 0x0029: {
+
+        } break;
+        case 0x0033: {
+
+        } break;
+        case 0x0055: {
+
+        } break;
+        case 0x0065: {
+
+        } break;
+        default: {
+            PC += 2;
+            return false;
+        }
+        }
     } break;
     default: {
         PC += 2; 
