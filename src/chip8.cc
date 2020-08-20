@@ -2,6 +2,8 @@
 #include <initializer_list>
 #include <cstring>
 #include <random>
+#include <cstdio>
+#include <fstream>
 
 chip8::chip8() {
     // Set all registers to 0
@@ -14,7 +16,7 @@ chip8::chip8() {
     PC = 0x200;
 
     // Set stack pointer to -1 (empty stack)
-    SP = -1;
+    SP = 0;
 
     // Load fonts
     int number = 0;
@@ -26,6 +28,9 @@ chip8::chip8() {
             font[number][i] = ((f >> 4*i) & 0xF) << 4;
         number++;
     }
+
+    // clear display
+    memset(display, 0, sizeof(display));
 }
 
 bool chip8::exec_instruction(unsigned short instr) {
@@ -41,7 +46,8 @@ bool chip8::exec_instruction(unsigned short instr) {
                 PC += 2; 
                 return false; // Stack empty fail
             }
-            PC = stack[SP--];
+            SP--;
+            PC = stack[SP];
             PC += 2; // Next instruction
         } break;
         default: {      // 0nnn : Instruction not suported
@@ -54,7 +60,8 @@ bool chip8::exec_instruction(unsigned short instr) {
         PC = instr & 0x0FFF;
     } break;
     case 0x2000: {      // 2nnn : Call subroutine at nnn
-        stack[++SP] = PC;
+        stack[SP] = PC;
+        SP++;
         PC = instr & 0x0FFF;
     } break;
     case 0x3000: {      // 3xkk : Skip next instruction if V[x] == kk
@@ -175,19 +182,20 @@ bool chip8::exec_instruction(unsigned short instr) {
         PC += 2;
     }   break;
     case 0xD000: {      // Dxyn : Draw sprite at (x, y)
-        unsigned short x = (instr & 0x0F00) >> 8;
-        unsigned short y = (instr & 0x00F0) >> 4;
+        unsigned short x = V[(instr & 0x0F00) >> 8];
+        unsigned short y = V[(instr & 0x00F0) >> 4];
         unsigned short n = (instr & 0x000F);
         V[0xF] = 0;
-        for (unsigned short addr = I; addr < I+n; addr++) {
+        for (short addr = I; addr < I+n; addr++) {
             unsigned char byte = Memory[addr];
-            for (unsigned short i = x+7; i >= x; i++) {
-                if (display[i % display_width][y % display_hight] == 1) V[0xF] = 1;
-                display[i % display_width][y % display_hight] ^= byte & 1;
-                byte == byte >> 1;
+            for (short i = x+7; i >= x; i--) {
+                if (display[y % display_hight][i % display_width] == 1) V[0xF] = 1;
+                display[y % display_hight][i % display_width] ^= (byte & 1);
+                byte = byte >> 1;
             }
             y++;
         }
+        PC += 2;
     } break;
     case 0xE000: {
         switch (instr & 0x00FF) {
@@ -235,7 +243,7 @@ bool chip8::exec_instruction(unsigned short instr) {
             PC += 2;
         } break;
         case 0x0029: {  // Fx29 : LD F, V[x], Set I = location of font for V[x]
-            I = (short)(&font[(instr & 0x0F00) >> 8][0] - &Memory[0]);
+            I = (short)(&font[V[(instr & 0x0F00) >> 8]][0] - &Memory[0]);
             PC += 2;
         } break;
         case 0x0033: {  // Fx33 : LD B, V[x], Set BCD of V[x] at I, I+1, I+2
@@ -266,4 +274,66 @@ bool chip8::exec_instruction(unsigned short instr) {
     }
     }
     return true;
+}
+
+bool chip8::load_rom(const char* rom_path) {
+    std::ifstream rom_stream(rom_path, std::ifstream::binary);
+    if (rom_stream) {
+        rom_stream.seekg(0, rom_stream.end);
+        int length = rom_stream.tellg();
+        if (length > (0x1000-0x200)) {
+            rom_stream.close();
+            return false;
+        }
+        rom_stream.seekg(0, rom_stream.beg);
+
+        char* buffr = new char[length];
+        rom_stream.read(buffr, length);
+        
+        if (rom_stream) {
+            for (int i = 0; i < length;i++) {
+                Memory[0x200 + i] = buffr[i];
+            }
+        } else {
+            delete[] buffr;
+            rom_stream.close();
+            return false;
+        }
+        rom_stream.close();
+        delete[] buffr;
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
+void chip8::step() {
+    int opcode = (Memory[PC] << 8) | Memory[PC+1];
+    //printf("[EXEC] 0x%.4X\n", opcode);
+    exec_instruction(opcode);
+    if (DT > 0) DT--;
+    if (ST > 0) ST--;
+}
+
+void chip8::print_memory() {
+    for (int i = 0; i < 0x1000; i++)
+        printf("MEM[0x%X] = 0x%X\n", i, Memory[i]);
+}
+
+void chip8::render(SDL_Renderer* renderer) {
+    SDL_RenderClear(renderer);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    for (int i = 0; i < display_hight; i++) {
+        for (int j = 0; j < display_width; j++) {
+            if (display[i][j])
+            {
+                SDL_Rect rect;
+                rect.x = j*10; rect.y = i*10; rect.w = 10; rect.h = 10;
+                SDL_RenderFillRect(renderer, &rect); 
+            }
+        }
+    }
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderPresent(renderer);
 }
