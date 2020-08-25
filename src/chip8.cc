@@ -1,6 +1,7 @@
 #include "chip8.h"
 #include <initializer_list>
 #include <cstring>
+#include <string>
 #include <random>
 #include <cstdio>
 #include <fstream>
@@ -42,7 +43,7 @@ bool chip8::exec_instruction(unsigned short instr) {
             PC += 2; 
         } break;
         case 0xEE: {    // 00EE : Return from subroutine
-            if (SP == -1) {
+            if (SP == 0) {
                 PC += 2; 
                 return false; // Stack empty fail
             }
@@ -127,7 +128,7 @@ bool chip8::exec_instruction(unsigned short instr) {
         } break;
         case 0x0005: {  // 8xy5 : V[x] = V[x] - V[y]; V[0xF] = not borrow
             V[x] = V[x] - V[y];
-            if (V[x] > V[y]) V[0xF] = 1;
+            if (V[x] < V[y]) V[0xF] = 1;
             else V[0xF] = 0;
             PC += 2;
         } break;
@@ -328,12 +329,12 @@ void chip8::render(SDL_Renderer* renderer) {
         for (int j = 0; j < display_width; j++) {
             if (display[i][j])
             {
-                SDL_Rect rect;
-                rect.x = j*10; rect.y = i*10; rect.w = 10; rect.h = 10;
+                SDL_Rect rect = { j*10, i*10, 10, 10 };
                 SDL_RenderFillRect(renderer, &rect); 
             }
         }
     }
+    
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderPresent(renderer);
 }

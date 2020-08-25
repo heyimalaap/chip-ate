@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <fstream>
 #include <SDL2/SDL.h>
+#include <string>
 
 constexpr short display_width = 64;
 constexpr short display_hight = 32;
